@@ -14,6 +14,7 @@ import (
 
 	"github.com/Max-Sum/base32768"
 	"github.com/rclone/rclone/backend/crypt/pkcs7"
+	"github.com/rclone/rclone/lib/encoder"
 	"github.com/rclone/rclone/lib/readers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -400,6 +401,38 @@ func TestStandardEncryptFileNameBase32768(t *testing.T) {
 		{"1-v2001-02-03-040506-123", "詮㪗鐮僀伎作㻖㢧⪟-v2001-02-03-040506-123"},
 		{"1/12-v2001-02-03-040506-123", "1/竢朧䉱虃光塬䟛⣡蓟-v2001-02-03-040506-123"},
 	})
+}
+
+func TestStandardEncryptDecryptFileNameBase32768ControlPictures(t *testing.T) {
+	enc, err := NewNameEncoding("base32768")
+	require.NoError(t, err)
+	c, err := newCipher(NameEncryptionStandard, "", "", true, enc)
+	require.NoError(t, err)
+
+	for i := 0; i < 10000; i++ {
+		plain := fmt.Sprintf("file-%d", i)
+		rawEncrypted := c.encryptSegment(plain)
+		standardEncrypted := encoder.Standard.Encode(rawEncrypted)
+		if standardEncrypted == rawEncrypted {
+			continue
+		}
+
+		encrypted := c.EncryptFileName(plain)
+		assert.Equal(t, standardEncrypted, encrypted)
+
+		sftpName := encoder.Base.FromStandardName(encrypted)
+		listedName := encoder.Base.ToStandardName(sftpName)
+		decrypted, err := c.DecryptFileName(listedName)
+		require.NoError(t, err)
+		assert.Equal(t, plain, decrypted)
+
+		legacyListedName := encoder.Base.ToStandardName(rawEncrypted)
+		decrypted, err = c.DecryptFileName(legacyListedName)
+		require.NoError(t, err)
+		assert.Equal(t, plain, decrypted)
+		return
+	}
+	t.Fatal("failed to generate a base32768 filename with control-picture characters")
 }
 
 func TestNonStandardEncryptFileName(t *testing.T) {

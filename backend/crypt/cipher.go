@@ -22,6 +22,7 @@ import (
 	"github.com/rclone/rclone/backend/crypt/pkcs7"
 	"github.com/rclone/rclone/fs"
 	"github.com/rclone/rclone/fs/accounting"
+	"github.com/rclone/rclone/lib/encoder"
 	"github.com/rclone/rclone/lib/readers"
 	"github.com/rclone/rclone/lib/version"
 	"github.com/rfjakob/eme"
@@ -526,6 +527,7 @@ func (c *Cipher) encryptFileName(in string, stripVersion bool) string {
 		if hasVersion {
 			segments[i] = version.Add(segments[i], t)
 		}
+		segments[i] = encoder.Standard.Encode(segments[i])
 	}
 	return strings.Join(segments, "/")
 }
@@ -575,6 +577,7 @@ func (c *Cipher) decryptFileName(in string, stripVersion bool) (string, error) {
 				hasVersion = true
 			}
 		}
+		segments[i] = encoder.Standard.Decode(segments[i])
 
 		if c.mode == NameEncryptionStandard {
 			segments[i], err = c.decryptSegment(segments[i])
